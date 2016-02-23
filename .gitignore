@@ -7,7 +7,8 @@
 # Precompiled Headers
 *.gch
 *.pch
-
+*.opendb
+*.sdf
 # Compiled Dynamic libraries
 *.so
 *.dylib
@@ -19,6 +20,8 @@
 # Compiled Static libraries
 *.lai
 *.la
+/.vs
+/bin
 *.a
 *.lib
 
