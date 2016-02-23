@@ -23,7 +23,6 @@
 /.vs
 /bin
 *.a
-*.lib
 
 # Executables
 *.exe
