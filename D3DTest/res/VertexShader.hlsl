@@ -3,6 +3,7 @@ struct Out {
 	float4 color : COLOR;
 	float2 uv : UV;
 	float3 normal : NORMAL;
+	float3 vertPos : VPOS;
 };
 
 struct In {
@@ -22,6 +23,7 @@ Out main(In i)
 {
 	Out e;
 	
+	e.vertPos = mul(model, float4(i.position, 1)).xyz;
 	e.position = mul(projection, mul(view, mul(model, float4(i.position, 1))));
 	e.normal = mul(model, float4(i.normal, 0));
 

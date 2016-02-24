@@ -172,11 +172,27 @@ int MAIN() {
 
 	out.model = tomato::math::mat4(1);
 
-	struct Light {
-		tomato::math::vec4 lightDir;
+	__declspec(align(16)) struct PointLight {
+		tomato::math::vec3 position;
+		tomato::math::vec3 color;
+		float constant;
+		float linear;
+		float exponent;
+	} point;
+
+	point.color = tomato::math::vec3(1, 1, 1);
+	point.position = tomato::math::vec3(0, 0, 4);
+	point.constant = 1;
+	point.linear = 1;
+	point.exponent = 1.0f;
+
+	shader.PSPassBuffers(2, sizeof(PointLight), &point);
+
+	__declspec(align(16)) struct Light {
+		tomato::math::vec3 lightDir;
 	} light;
 
-	light.lightDir = tomato::math::vec4(0, 0, -1, 0);
+	light.lightDir = tomato::math::vec3(0, 0, -1);
 
 	shader.PSPassBuffers(1, sizeof(Light), &light);
 
@@ -220,7 +236,7 @@ int MAIN() {
 
 		out.model = tomato::math::mat4().translate(pos) * tomato::math::mat4().rotate(r);// *mat4().scale(vec3(1.5, 1.5, 1.5));
 		
-		//Sleep(5);
+		Sleep(5);
 	}
 		
 	DX::Quit();
