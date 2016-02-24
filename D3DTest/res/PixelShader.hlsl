@@ -20,8 +20,9 @@ cbuffer Light : register(b1) {
 float4 main(In i) : SV_TARGET
 {
 	float4 texCol = tex.Sample(state, i.uv);
+	
+	float brightness = max(dot(i.normal, -lightDir), 0.1f);
 
-	float brightness = dot(i.normal, -lightDir.xyz);
-
-	return float4(brightness, brightness, brightness, 1);// *brightness;
+//	return float4(brightness, brightness, brightness, 1);
+	return float4(texCol.xyz * brightness, 1);
 }

@@ -9,15 +9,17 @@
 #include "vertexbuffer.h"
 #include "IndexBuffer.h"
 #include "objmodel.h"
+#include "FlyCamera.h"
+#include <ctime>
+#include "input.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "DirectXTK.lib")
-using namespace tomato::math;
 struct Vertex {
-	vec3 position; //float x, y, z;
-	vec4 color;//float r, g, b, a;
-	vec2 uv;//float u, v;
-	vec3 normal;
+	tomato::math::vec3 position; //float x, y, z;
+	tomato::math::vec4 color;//float r, g, b, a;
+	tomato::math::vec2 uv;//float u, v;
+	tomato::math::vec3 normal;
 };
 
 
@@ -51,8 +53,9 @@ void loadBinaryFile(const char* filename, char** data, unsigned int& size) {
 
 int MAIN() {
 
+	Camera* camera = new FlyCamera(tomato::math::vec3(), tomato::math::vec3());
 
-	DX::Init(1280, 720, "Title");
+	DX::Init(1280, 720, "Title", 4);
 
 	VertexBuffer* vertex = nullptr;
 	IndexBuffer* index = nullptr;
@@ -82,7 +85,7 @@ int MAIN() {
 	#endif
 	shader.bind();
 
-	Vertex vertices[] = {
+	/*Vertex vertices[] = {
 		{vec3(0, 1, 0), vec4(1, 0, 0, 1), vec2(0.5f, 0), vec3(0, 0, 1)},
 		{vec3(1, -1, 0), vec4(0, 1, 0, 1), vec2(1, 1), vec3(0, 0, 1)},
 		{vec3(-1, -1, 0), vec4(0, 0, 1, 1), vec2(0, 1), vec3(0, 0, 1)}
@@ -93,6 +96,8 @@ int MAIN() {
 	
 	VertexBuffer vbuffer(vertices, sizeof(vertices), sizeof(Vertex));
 	IndexBuffer ibuffer(indices, sizeof(indices), DXGI_FORMAT_R32_UINT, 3);
+
+	*/
 
 	D3D11_SAMPLER_DESC sdc;
 	ZeroMemory(&sdc, sizeof(D3D11_SAMPLER_DESC));
@@ -155,32 +160,47 @@ int MAIN() {
 
 	
 	
-	vec3 r(0, 0, 0);
+	tomato::math::vec3 r(0, 0, 0);
 	
 	struct out_data {
-		mat4 projection;
-		mat4 model;
-		mat4 rotation;
+		tomato::math::mat4 projection;
+		tomato::math::mat4 view;
+		tomato::math::mat4 model;
 	} out;
 
-	out.projection = mat4().perspective(70.0f, 16.0f / 9.0f, 0.001f, 1000.0f);
+	out.projection = tomato::math::mat4().perspective(70.0f, 16.0f / 9.0f, 0.001f, 1000.0f);
 
-	out.model = mat4(1);
+	out.model = tomato::math::mat4(1);
 
 	struct Light {
-		vec4 lightDir;
+		tomato::math::vec4 lightDir;
 	} light;
 
-	light.lightDir = vec4(0, 0, -1, 0);
+	light.lightDir = tomato::math::vec4(0, 0, -1, 0);
 
 	shader.PSPassBuffers(1, sizeof(Light), &light);
 
-	vec3 pos(0, -2, -3.5f);
+	tomato::math::vec3 pos(0, -1, -3.5f);
+	
+	unsigned int time = clock();
 
+	const float ms = 1.0f / 1000.0f;
+
+	float delta = 0;
+
+	//DX::SetMouseState(true);
+	
 	while (DX::open) {
-		
+	
+		delta = ((float)clock() - time) * ms;
 
-		DX::clear(0, 0, 0);
+		time = clock();
+
+		camera->update(delta);
+
+		out.view = camera->getViewMatrix();
+
+		DX::Clear(0, 0, 0);
 
 		shader.VSPassBuffers(0, sizeof(out_data), &out);
 		#if DRAW_TRIANGLE
@@ -189,26 +209,25 @@ int MAIN() {
 		DX::cxt->DrawIndexed(index->getCount(), 0, 0);
 		#endif
 
-		DX::update();
+		DX::Update();
 
 		zRot -= 0.015f;
-
+		
 		/*pos.x = cosf(zRot) * (21.0f / 9.0f);
 		pos.z = sinf(zRot) -2.5f;*/
 		//r.z += 0.24f;
-		r.y += 0.175;
+		r.y += 75 * delta;
 
-		out.model = mat4().translate(pos) * mat4().scale(vec3(0.45f, 0.45f, 0.45f));// *mat4().rotate(r);// *mat4().scale(vec3(1.5, 1.5, 1.5));
-		out.rotation = mat4().rotate(r);
+		out.model = tomato::math::mat4().translate(pos) * tomato::math::mat4().rotate(r);// *mat4().scale(vec3(1.5, 1.5, 1.5));
 		
-		Sleep(5);
+		//Sleep(5);
 	}
 		
 	DX::Quit();
 
 	delete vertex;
 	delete index;
-
+	delete camera;
 	return 0;
 }
 

@@ -17,8 +17,10 @@ HWND DX::hwnd;
 HINSTANCE DX::instance;
 int DX::width, DX::height;
 bool DX::open = false;
+bool DX::mouseCaptured = false;
+HANDLE DX::threadId = 0;
 
-void DX::Init(int w, int h, const char* title) {
+void DX::Init(int w, int h, const char* title, unsigned int ms) {
 	DX::width = w;
 	DX::height = h;
 	instance = NULL;
@@ -55,7 +57,8 @@ void DX::Init(int w, int h, const char* title) {
 	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 	scd.OutputWindow = hwnd;
-	scd.SampleDesc.Count = 4;
+	scd.SampleDesc.Count = ms;
+	scd.SampleDesc.Quality = 0;
 	scd.Windowed = true;
 
 	#ifdef _DEBUG
@@ -79,11 +82,12 @@ void DX::Init(int w, int h, const char* title) {
 
 	td.ArraySize = 1;
 	td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	td.Format = DXGI_FORMAT_D32_FLOAT;
 	td.Height = h;
 	td.Width = w;
 	td.MipLevels = 1;
-	td.SampleDesc.Count = 1;
+	td.SampleDesc.Count = ms;
+	td.SampleDesc.Quality = 0;
 	td.Usage = D3D11_USAGE_DEFAULT;
 
 	HRESULT hr = DX::device->CreateTexture2D(&td, 0, &depthStencil);
@@ -91,7 +95,7 @@ void DX::Init(int w, int h, const char* title) {
 	if (FAILED(hr))
 		printf("CreateTexture2D Failed: 0x%08x\n", hr);
 
-	D3D11_DEPTH_STENCIL_DESC ddc;
+	/*D3D11_DEPTH_STENCIL_DESC ddc;
 	ZeroMemory(&ddc, sizeof(D3D11_DEPTH_STENCIL_DESC));
 
 	ddc.DepthEnable = TRUE;
@@ -119,14 +123,15 @@ void DX::Init(int w, int h, const char* title) {
 	if (FAILED(hr))
 		printf("CreateDepthStencilState Failed: 0x%08x\n", hr);
 
-	DX::cxt->OMSetDepthStencilState(depthState,	1);
+	//DX::cxt->OMSetDepthStencilState(depthState,	1);*/
 
 	D3D11_DEPTH_STENCIL_VIEW_DESC vdc;
 	ZeroMemory(&vdc, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
 
-	vdc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	vdc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	vdc.Format = DXGI_FORMAT_D32_FLOAT;
+	vdc.ViewDimension = ms > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
 	vdc.Texture2D.MipSlice = 0;
+	
 	
 	
 	hr = DX::device->CreateDepthStencilView(depthStencil, &vdc, &depthView);
@@ -135,7 +140,7 @@ void DX::Init(int w, int h, const char* title) {
 		printf("CreateDepthStencilView Failed: 0x%08x\n", hr);
 
 
-	DX::cxt->OMSetRenderTargets(1, &backbuffer, nullptr);
+	DX::cxt->OMSetRenderTargets(1, &backbuffer, depthView);
 
 	D3D11_VIEWPORT viewport;
 
@@ -145,8 +150,13 @@ void DX::Init(int w, int h, const char* title) {
 	viewport.TopLeftY = 0;
 	viewport.Width = w;
 	viewport.Height = h;
+	viewport.MaxDepth = 1.0f;
+	viewport.MinDepth = 0.0f;
 
 	DX::cxt->RSSetViewports(1, &viewport);
+
+	threadId = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)MouseUpdate, 0, 0, 0);
+
 }
 
 void DX::Quit() {
@@ -154,27 +164,40 @@ void DX::Quit() {
 	swapchain->Release();
 	backbuffer->Release();
 	depthStencil->Release();
-	depthState->Release();
+//	depthState->Release();
 	depthView->Release();
 	cxt->Release();
 	device->Release();
 	CloseWindow(hwnd);
+	SuspendThread(threadId);
 }
 
-void DX::update() {
+void DX::SetMouseState(bool capture) {
+	if (capture && !mouseCaptured) {
+		mouseCaptured = true;
+
+		ShowCursor(FALSE);
+
+	} else if (!capture && mouseCaptured) {
+		mouseCaptured = false;
+
+		ShowCursor(TRUE);
+	}
+}
+
+void DX::Update() {
 	MSG msg;
 	if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
-
 	swapchain->Present(0, 0);
 }
 
-void DX::clear(float r, float g, float b) {
+void DX::Clear(float r, float g, float b) {
 	float col[4]{r, g, b, 1.0f};
 	cxt->ClearRenderTargetView(backbuffer, col);
-	cxt->ClearDepthStencilView(depthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0.0f);
+	cxt->ClearDepthStencilView(depthView, D3D11_CLEAR_DEPTH, 1.0f, 0.0f);
 }
 
 LRESULT DX::WndProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
@@ -182,7 +205,37 @@ LRESULT DX::WndProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 	switch (msg) {
 		case WM_CLOSE:
 			DX::open = false;
+		case WM_KEYDOWN:
+			Input::keys[w] = true;
+			break;
+		case WM_KEYUP:
+			Input::keys[w] = false;
+			Input::prevKeys[w] = false;
+			break;
+		case WM_MOUSEMOVE:
+			Input::mouse_x = LOWORD(l);
+			Input::mouse_y = HIWORD(l);
+			break;
 	}
 
 	return DefWindowProc(hwnd, msg, w, l);
+}
+
+unsigned int MouseUpdate(void* p) {
+	while (true) {
+		if (DX::mouseCaptured) {
+
+
+			POINT p;
+			p.x = DX::width >> 1;
+			p.y = DX::height >> 1;
+
+			ClientToScreen(DX::hwnd, &p);
+
+			SetCursorPos(p.x, p.y);
+		}
+
+		Sleep(16);
+	}
+	return 0;
 }
