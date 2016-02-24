@@ -57,15 +57,21 @@ int MAIN() {
 
 	DX::Init(1280, 720, "Title", 4);
 
+	VertexBuffer* vplane = nullptr;
+	IndexBuffer* iplane = nullptr;
+	VertexBuffer* vsphere = nullptr;
+	IndexBuffer* isphere = nullptr;
 	VertexBuffer* vertex = nullptr;
 	IndexBuffer* index = nullptr;
 	ID3D11Resource* res;
 	ID3D11ShaderResourceView* view;
-	DirectX::CreateWICTextureFromFile(DX::device, DX::cxt, L"res/tex.png", &res, &view, 0);
+	DirectX::CreateWICTextureFromFile(DX::device, DX::cxt, L"res/Gunmetal.jpg", &res, &view, 0);
 
 
 
 	loadObjModel("res/dragon.obj", &vertex, &index);
+	loadObjModel("res/sphere.obj", &vsphere, &isphere);
+	loadObjModel("res/plane.obj", &vplane, &iplane);
 
 	DX::cxt->PSSetShaderResources(1, 1, &view);
 
@@ -84,20 +90,6 @@ int MAIN() {
 	Shader shader("res/VertexShader.hlsl", "res/PixelShader.hlsl");
 	#endif
 	shader.bind();
-
-	/*Vertex vertices[] = {
-		{vec3(0, 1, 0), vec4(1, 0, 0, 1), vec2(0.5f, 0), vec3(0, 0, 1)},
-		{vec3(1, -1, 0), vec4(0, 1, 0, 1), vec2(1, 1), vec3(0, 0, 1)},
-		{vec3(-1, -1, 0), vec4(0, 0, 1, 1), vec2(0, 1), vec3(0, 0, 1)}
-	};
-
-	unsigned int indices[3]{0, 1, 2};
-
-	
-	VertexBuffer vbuffer(vertices, sizeof(vertices), sizeof(Vertex));
-	IndexBuffer ibuffer(indices, sizeof(indices), DXGI_FORMAT_R32_UINT, 3);
-
-	*/
 
 	D3D11_SAMPLER_DESC sdc;
 	ZeroMemory(&sdc, sizeof(D3D11_SAMPLER_DESC));
@@ -145,13 +137,6 @@ int MAIN() {
 
 	DX::cxt->IASetInputLayout(layout);
 
-	#if DRAW_TRIANGLE
-	vbuffer.bind();
-	ibuffer.bind();
-	#else
-	vertex->bind();
-	index->bind();
-	#endif
 	DX::cxt->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
@@ -174,17 +159,20 @@ int MAIN() {
 
 	__declspec(align(16)) struct PointLight {
 		tomato::math::vec3 position;
+		float a;
 		tomato::math::vec3 color;
+		float b;
 		float constant;
 		float linear;
 		float exponent;
+		float c;
 	} point;
 
-	point.color = tomato::math::vec3(1, 1, 1);
-	point.position = tomato::math::vec3(0, 0, 4);
-	point.constant = 1;
-	point.linear = 1;
-	point.exponent = 1.0f;
+	point.color = tomato::math::vec3(0.456, 0.76, 1);
+	point.position = tomato::math::vec3(0, 2, 2);
+	point.constant = 0.01;
+	point.linear = 0.25;
+	point.exponent = 0.035f;
 
 	shader.PSPassBuffers(2, sizeof(PointLight), &point);
 
@@ -192,7 +180,7 @@ int MAIN() {
 		tomato::math::vec3 lightDir;
 	} light;
 
-	light.lightDir = tomato::math::vec3(0, 0, -1);
+	light.lightDir = tomato::math::vec3(0, -0.75f, -0.25f);
 
 	shader.PSPassBuffers(1, sizeof(Light), &light);
 
@@ -205,42 +193,68 @@ int MAIN() {
 	float delta = 0;
 
 	//DX::SetMouseState(true);
+
+	float a = 0;
 	
 	while (DX::open) {
+		DX::Clear(0, 0, 0);
 	
 		delta = ((float)clock() - time) * ms;
 
 		time = clock();
 
 		camera->update(delta);
+		a += 1 * delta;
 
+		point.position.x = cosf(a) * 10;
+		shader.PSPassBuffers(2, sizeof(PointLight), &point);
+
+		out.model = tomato::math::mat4().translate(pos) * tomato::math::mat4().rotate(r);// *mat4().scale(vec3(1.5, 1.5, 1.5));
 		out.view = camera->getViewMatrix();
 
-		DX::Clear(0, 0, 0);
+		shader.VSPassBuffers(0, sizeof(out_data), &out);
+
+		vertex->bind();
+		index->bind();
+
+		DX::cxt->DrawIndexed(index->getCount(), 0, 0);
+
+		out.model = tomato::math::mat4().translate(tomato::math::vec3(0, 0, 6)) * tomato::math::mat4().rotate(r);
+
+		vsphere->bind();
+		isphere->bind();
 
 		shader.VSPassBuffers(0, sizeof(out_data), &out);
-		#if DRAW_TRIANGLE
-		DX::cxt->DrawIndexed(ibuffer.getCount(), 0, 0);
-		#else
-		DX::cxt->DrawIndexed(index->getCount(), 0, 0);
-		#endif
 
-		DX::Update();
+		DX::cxt->DrawIndexed(isphere->getCount(), 0, 0);
 
-		zRot -= 0.015f;
+
+		out.model = tomato::math::mat4().translate(tomato::math::vec3(0, -1, 0));
 		
+		vplane->bind();
+		iplane->bind();
+
+		shader.VSPassBuffers(0, sizeof(out_data), &out);
+
+		DX::cxt->DrawIndexed(iplane->getCount(), 0, 0);
+
 		/*pos.x = cosf(zRot) * (21.0f / 9.0f);
 		pos.z = sinf(zRot) -2.5f;*/
 		//r.z += 0.24f;
-		r.y += 75 * delta;
+	//	r.y += 75 * delta;
 
-		out.model = tomato::math::mat4().translate(pos) * tomato::math::mat4().rotate(r);// *mat4().scale(vec3(1.5, 1.5, 1.5));
+		zRot -= 0.015f;
 		
-		Sleep(5);
+		DX::Update();
+		//Sleep(5);
 	}
 		
 	DX::Quit();
 
+	delete iplane;
+	delete vplane;
+	delete isphere;
+	delete vsphere;
 	delete vertex;
 	delete index;
 	delete camera;

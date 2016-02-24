@@ -20,10 +20,13 @@ cbuffer Light : register(b1) {
 
 cbuffer PointLight : register(b2) {
 	float3 l_lightPos;
+	float a;
 	float3 l_lightColor;
+	float b;
 	float l_constant;
 	float l_linear;
 	float l_exponent;
+	float c;
 };
 
 float4 main(In i) : SV_TARGET {
@@ -36,8 +39,11 @@ float4 main(In i) : SV_TARGET {
 
 	float4 texCol = tex.Sample(state, i.uv);
 	
-	float brightness = dot(i.normal, -lightDir);
+	//float brightness = max(dot(i.normal, -lightDir), 0.1f);
+	float brightness = max(dot(i.normal, normalize(toLight)) * atten, 0.00f);
+
+	float3 finalLightEffect = l_lightColor * brightness;
 	
 	//return float4(normalize(toLight), 1);
-	return float4(texCol.xyz* brightness, 1);
+	return float4(finalLightEffect, 1);
 }
