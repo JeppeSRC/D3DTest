@@ -1,4 +1,5 @@
 #include "FlyCamera.h"
+#include "shader.h"
 
 #define SPEED 10
 #define SENS 6.5
@@ -38,6 +39,9 @@ void FlyCamera::update(float delta) {
 
 
 		viewMatrix = mat4().rotate(rotation) * mat4().translate(position * -1.0f);
+
+		Shader::active->VSPassBuffers(3, sizeof(mat4), &viewMatrix);
+		
 	}
 
 

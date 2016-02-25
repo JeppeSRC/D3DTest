@@ -20,13 +20,10 @@ cbuffer Light : register(b1) {
 
 cbuffer PointLight : register(b2) {
 	float3 l_lightPos;
-	float a;
 	float3 l_lightColor;
-	float b;
 	float l_constant;
 	float l_linear;
 	float l_exponent;
-	float c;
 };
 
 float4 main(In i) : SV_TARGET {

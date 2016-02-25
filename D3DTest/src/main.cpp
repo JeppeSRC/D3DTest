@@ -12,6 +12,7 @@
 #include "FlyCamera.h"
 #include <ctime>
 #include "input.h"
+#include "entity.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "DirectXTK.lib")
@@ -57,21 +58,21 @@ int MAIN() {
 
 	DX::Init(1280, 720, "Title", 4);
 
-	VertexBuffer* vplane = nullptr;
-	IndexBuffer* iplane = nullptr;
-	VertexBuffer* vsphere = nullptr;
-	IndexBuffer* isphere = nullptr;
-	VertexBuffer* vertex = nullptr;
-	IndexBuffer* index = nullptr;
+	Model dragonModel, sphereModel, planeModel;
+
 	ID3D11Resource* res;
 	ID3D11ShaderResourceView* view;
 	DirectX::CreateWICTextureFromFile(DX::device, DX::cxt, L"res/Gunmetal.jpg", &res, &view, 0);
 
 
 
-	loadObjModel("res/dragon.obj", &vertex, &index);
-	loadObjModel("res/sphere.obj", &vsphere, &isphere);
-	loadObjModel("res/plane.obj", &vplane, &iplane);
+	loadObjModel("res/dragon.obj", &dragonModel);
+	loadObjModel("res/sphere.obj", &sphereModel);
+	loadObjModel("res/plane.obj", &planeModel);
+
+	Entity dragon(tomato::math::vec3(0, -1, -3.5f), tomato::math::vec3(0, 0, 0), &dragonModel);
+	Entity sphere(tomato::math::vec3(0, 0, 3.5), tomato::math::vec3(0, 0, 0), &sphereModel);
+	Entity plane(tomato::math::vec3(0, -1, 0), tomato::math::vec3(0, 0, 0), &planeModel);
 
 	DX::cxt->PSSetShaderResources(1, 1, &view);
 
@@ -157,17 +158,16 @@ int MAIN() {
 
 	out.model = tomato::math::mat4(1);
 
-	__declspec(align(16)) struct PointLight {
-		tomato::math::vec3 position;
-		float a;
-		tomato::math::vec3 color;
-		float b;
+	struct PointLight {
+		__declspec(align(16)) 	tomato::math::vec3 position;
+		
+		__declspec(align(16)) tomato::math::vec3 color;
 		float constant;
 		float linear;
 		float exponent;
-		float c;
 	} point;
 
+	point.color = tomato::math::vec3(1, 0, 1);
 	point.color = tomato::math::vec3(0.456, 0.76, 1);
 	point.position = tomato::math::vec3(0, 2, 2);
 	point.constant = 0.01;
@@ -183,6 +183,10 @@ int MAIN() {
 	light.lightDir = tomato::math::vec3(0, -0.75f, -0.25f);
 
 	shader.PSPassBuffers(1, sizeof(Light), &light);
+
+	shader.VSPassBuffers(0, sizeof(tomato::math::mat4), &tomato::math::mat4().perspective(70.0f, 16.0f / 9.0f, 0.001f, 1000.0f));
+	shader.VSPassBuffers(3, sizeof(tomato::math::mat4), &tomato::math::mat4(1));
+
 
 	tomato::math::vec3 pos(0, -1, -3.5f);
 	
@@ -209,34 +213,9 @@ int MAIN() {
 		point.position.x = cosf(a) * 10;
 		shader.PSPassBuffers(2, sizeof(PointLight), &point);
 
-		out.model = tomato::math::mat4().translate(pos) * tomato::math::mat4().rotate(r);// *mat4().scale(vec3(1.5, 1.5, 1.5));
-		out.view = camera->getViewMatrix();
-
-		shader.VSPassBuffers(0, sizeof(out_data), &out);
-
-		vertex->bind();
-		index->bind();
-
-		DX::cxt->DrawIndexed(index->getCount(), 0, 0);
-
-		out.model = tomato::math::mat4().translate(tomato::math::vec3(0, 0, 6)) * tomato::math::mat4().rotate(r);
-
-		vsphere->bind();
-		isphere->bind();
-
-		shader.VSPassBuffers(0, sizeof(out_data), &out);
-
-		DX::cxt->DrawIndexed(isphere->getCount(), 0, 0);
-
-
-		out.model = tomato::math::mat4().translate(tomato::math::vec3(0, -1, 0));
-		
-		vplane->bind();
-		iplane->bind();
-
-		shader.VSPassBuffers(0, sizeof(out_data), &out);
-
-		DX::cxt->DrawIndexed(iplane->getCount(), 0, 0);
+		dragon.render(&shader);
+		plane.render(&shader);
+		sphere.render(&shader);
 
 		/*pos.x = cosf(zRot) * (21.0f / 9.0f);
 		pos.z = sinf(zRot) -2.5f;*/
@@ -251,12 +230,6 @@ int MAIN() {
 		
 	DX::Quit();
 
-	delete iplane;
-	delete vplane;
-	delete isphere;
-	delete vsphere;
-	delete vertex;
-	delete index;
 	delete camera;
 	return 0;
 }

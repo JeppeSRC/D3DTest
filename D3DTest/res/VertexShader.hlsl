@@ -13,9 +13,15 @@ struct In {
 	float3 normal : NORMAL;
 };
 
-cbuffer Input : register(b0) {
+cbuffer Proj : register(b0) {
 	float4x4 projection;
+};
+
+cbuffer View : register(b3) {
 	float4x4 view;
+};
+
+cbuffer Model : register(b4) {
 	float4x4 model;
 };
 

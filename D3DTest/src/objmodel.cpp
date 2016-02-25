@@ -66,7 +66,7 @@ static void InsertFace(char* face, std::vector<vec3>& vertices, std::vector<vec3
 	delete[] v;
 }
 
-void loadObjModel(const char* filename, VertexBuffer** vertexBuffer, IndexBuffer** indexBuffer) {
+void loadObjModel(const char* filename, Model* model) {
 
 
 	FILE* file = fopen(filename, "rt");
@@ -154,10 +154,17 @@ void loadObjModel(const char* filename, VertexBuffer** vertexBuffer, IndexBuffer
 			v[i].normal = normals[i];
 		}
 
-		*vertexBuffer = new VertexBuffer(v, vsize * sizeof(Vertex), sizeof(Vertex));
-		*indexBuffer = new IndexBuffer(&indices[0], indices.size() * sizeof(unsigned int), DXGI_FORMAT_R32_UINT, indices.size());
+		if (model == nullptr) {
+			goto end;
+		}
+
+		model->vertex = new VertexBuffer(v, vsize * sizeof(Vertex), sizeof(Vertex));
+		model->index= new IndexBuffer(&indices[0], indices.size() * sizeof(unsigned int), DXGI_FORMAT_R32_UINT, indices.size());
+		
+		end:
 
 		delete[] v;
+
 
 	} else {
 		//TODO: error

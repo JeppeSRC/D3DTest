@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <iostream>
 
+Shader* Shader::active = nullptr;
+
 Shader::Shader(const char* vertex, const char* pixel) {
 	ID3DBlob* v = nullptr;
 	ID3DBlob* p = nullptr;
@@ -76,6 +78,7 @@ void Shader::Init(void* v, size_t vsize, void* p, size_t psize) {
 void Shader::bind() {
 	DX::cxt->VSSetShader(vs, 0, 0);
 	DX::cxt->PSSetShader(ps, 0, 0);
+	active = this;
 }
 
 void Shader::VSPassBuffers(unsigned int buffer_id, size_t size, void* data) {

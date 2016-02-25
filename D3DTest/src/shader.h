@@ -34,4 +34,7 @@ public:
 	inline const void* getPCode() const { return pCode.byteCode; }
 	inline size_t getVCodeSize() const { return vCode.size; }
 	inline size_t getPCodeSize() const { return pCode.size; }
+
+
+	static Shader* active;
 };

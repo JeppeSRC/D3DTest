@@ -7,8 +7,10 @@
 #include <dxgi.h>
 #include "input.h"
 
+
 class DX {
 public:
+	 
 	static IDXGISwapChain* swapchain;
 	static ID3D11Device* device;
 	static ID3D11DeviceContext* cxt;

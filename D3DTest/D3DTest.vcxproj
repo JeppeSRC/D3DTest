@@ -164,6 +164,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\camera.h" />
+    <ClInclude Include="src\entity.h" />
     <ClInclude Include="src\FlyCamera.h" />
     <ClInclude Include="src\IndexBuffer.h" />
     <ClInclude Include="src\input.h" />
